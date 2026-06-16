@@ -87,7 +87,7 @@ The design is intentionally simple: one page with two modes (single/batch), two 
 
 The interface is designed for government compliance agents (ages 50+, varying tech comfort):
 - High contrast, large text, clear labels
-- No ambiguous icons — text labels on everything
+- Icons always paired with text labels — no icon-only controls
 - Skip-navigation link for keyboard users
 - `aria-live` region announces results to screen readers
 - Progress feedback during AI processing

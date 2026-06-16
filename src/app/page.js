@@ -17,7 +17,7 @@ export default function Home() {
       {/* Government-style header bar */}
       <header className="bg-[#1a2e5a] text-white">
         <div className="max-w-5xl mx-auto px-6 py-5">
-          <p className="text-xs tracking-wider uppercase opacity-80 mb-1">
+          <p className="text-xs tracking-wider uppercase text-blue-200 mb-1">
             Alcohol and Tobacco Tax and Trade Bureau
           </p>
           <h1 className="text-2xl font-bold tracking-tight">
@@ -27,9 +27,13 @@ export default function Home() {
       </header>
 
       {/* Mode tabs */}
-      <nav className="bg-slate-100 border-b border-slate-300">
-        <div className="max-w-5xl mx-auto px-6 flex gap-0">
+      <nav className="bg-slate-100 border-b border-slate-300" aria-label="Verification mode">
+        <div className="max-w-5xl mx-auto px-6 flex gap-0" role="tablist">
           <button
+            id="tab-single"
+            role="tab"
+            aria-selected={mode === "single"}
+            aria-controls="panel-single"
             onClick={() => setMode("single")}
             className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors ${
               mode === "single"
@@ -40,6 +44,10 @@ export default function Home() {
             Single Label
           </button>
           <button
+            id="tab-batch"
+            role="tab"
+            aria-selected={mode === "batch"}
+            aria-controls="panel-batch"
             onClick={() => setMode("batch")}
             className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors ${
               mode === "batch"
@@ -53,7 +61,12 @@ export default function Home() {
       </nav>
 
       <main id="main-content" className="max-w-5xl mx-auto px-6 py-8">
-        {mode === "single" ? <SingleMode /> : <BatchMode />}
+        <div id="panel-single" role="tabpanel" aria-labelledby="tab-single" hidden={mode !== "single"}>
+          {mode === "single" && <SingleMode />}
+        </div>
+        <div id="panel-batch" role="tabpanel" aria-labelledby="tab-batch" hidden={mode !== "batch"}>
+          {mode === "batch" && <BatchMode />}
+        </div>
       </main>
 
       <footer className="border-t border-slate-200 mt-12">
@@ -485,9 +498,7 @@ function BatchMode() {
             disabled={loading}
             className="bg-[#1a2e5a] hover:bg-[#15254a] disabled:bg-slate-400 text-white font-bold py-3 px-6 rounded-lg transition focus:ring-4 focus:ring-blue-200 focus:outline-none"
           >
-            {loading
-              ? `Processing ${csvFile ? "" : ""}labels...`
-              : "Verify All Labels"}
+            {loading ? "Processing labels..." : "Verify All Labels"}
           </button>
         </div>
       </form>
@@ -654,9 +665,13 @@ function BatchRow({ result, expanded, onToggle }) {
 /* ─── Tiny helpers ─────────────────────────────────────────────── */
 function MiniStatus({ status }) {
   return status === "pass" ? (
-    <span className="text-green-700 font-bold" title="Match">&#10003;</span>
+    <span className="text-green-700 font-bold" aria-label="Match">
+      &#10003;<span className="sr-only"> Match</span>
+    </span>
   ) : (
-    <span className="text-red-700 font-bold" title="Mismatch">&#10007;</span>
+    <span className="text-red-700 font-bold" aria-label="Mismatch">
+      &#10007;<span className="sr-only"> Mismatch</span>
+    </span>
   );
 }
 
