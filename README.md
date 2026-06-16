@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# TTB Label Verification Tool
 
-## Getting Started
+An AI-powered web application that verifies alcohol beverage labels against application data, automating routine compliance checks for the Alcohol and Tobacco Tax and Trade Bureau (TTB).
 
-First, run the development server:
+**Deployed application:** _URL will be added after deployment_
+
+## What It Does
+
+A compliance agent uploads a label image along with the expected application data (brand name, class/type, ABV, net contents). The app uses OpenAI's GPT-4o vision model to read the label, then compares what it finds against the application data.
+
+### Checks Performed
+
+| Check | Method |
+|-------|--------|
+| Brand name | Normalized match (case-insensitive, punctuation-tolerant) |
+| Class/type designation | Normalized match |
+| Alcohol content (ABV) | Numeric comparison |
+| Net contents | Normalized match (e.g., "750 mL" = "750mL") |
+| Government warning text | Exact wording match per 27 CFR Part 16 |
+| Warning heading caps | "GOVERNMENT WARNING:" must be ALL CAPS |
+| Warning heading bold | Visual weight check (approximate — see limitations) |
+| Image quality | Confidence rating; unreadable images fail with guidance |
+
+### Two Modes
+
+- **Single Label** — enter application data + upload one label image, get a detailed pass/fail report.
+- **Batch Upload** — upload a CSV of application data + multiple label images, matched by filename. Results displayed in a summary table with expandable detail rows.
+
+## Installation
+
+```bash
+git clone https://github.com/hme222/Verification-App.git
+cd Verification-App
+npm install
+```
+
+## Required Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+You need an OpenAI API key with access to the `gpt-4o` model.
+
+## Running Locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Other commands:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build    # Production build
+npm run start    # Start production server
+npm run lint     # Run ESLint
+```
 
-## Learn More
+## Batch CSV Format
 
-To learn more about Next.js, take a look at the following resources:
+The batch upload expects a CSV with these columns (headers are flexible — the parser matches on keywords):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```csv
+filename,brand_name,class_type,abv,net_contents
+label_001.jpg,Stone's Throw,Kentucky Straight Bourbon Whiskey,45,750 mL
+label_002.jpg,Coastal IPA,India Pale Ale,6.5,12 FL OZ
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The `filename` column must match the uploaded image filenames exactly.
 
-## Deploy on Vercel
+## Approach and Tools
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Next.js 16** (App Router) — React framework with server-side API routes
+- **OpenAI GPT-4o** — Vision model for label OCR and structured text extraction
+- **Tailwind CSS 4** — Utility-first styling
+- **System fonts** — No external font requests (compatible with government network firewalls)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Architecture
+
+The design is intentionally simple: one page with two modes (single/batch), two API routes. Uploaded images are converted to base64 and sent to GPT-4o with a structured prompt requesting JSON output. The server runs deterministic comparison logic and returns a compliance report. Batch mode processes labels in parallel (3 at a time) to balance speed with API rate limits.
+
+### UX Approach
+
+The interface is designed for government compliance agents (ages 50+, varying tech comfort):
+- High contrast, large text, clear labels
+- No ambiguous icons — text labels on everything
+- Skip-navigation link for keyboard users
+- `aria-live` region announces results to screen readers
+- Progress feedback during AI processing
+- Error states shown inline (no alert popups)
+
+## Assumptions
+
+- Single-label and small-batch verification are the primary use cases for this prototype
+- The OpenAI API is accessible from the deployment environment
+- GPT-4o's vision capabilities are sufficient for reading standard printed label text
+- Bold detection is approximate — the model infers boldness from visual weight
+- Labels are expected to be in English
+
+## Known Limitations and Tradeoffs
+
+- **Batch scale** — tested with small batches (5–10 labels). For 200–300+ labels, a queue-based architecture with progress streaming would be more appropriate. The current implementation processes synchronously.
+- **Bold detection is approximate** — there is no reliable way to detect CSS-style "bold" from a photograph; the AI makes its best visual judgment and this is documented in the results.
+- **Image size limits** — very large images may hit OpenAI's payload limits; standard phone photos work fine.
+- **No persistent storage** — results are not saved between sessions.
+- **Speed** — single labels return in ~3–8 seconds. Batch processing adds ~3–8 seconds per label (3 processed concurrently).
+- **Government warning match is strict** — minor OCR misreads are normalized (smart quotes, extra whitespace), but significant wording differences will fail as required.
+- **No FedRAMP compliance** — this is a prototype; production deployment on Azure government infrastructure would require additional certification.
+- **Image quality gating** — if the AI determines the image is unreadable (blurry, dark, obstructed), all fields are marked as failed with a clear message to re-upload, rather than returning unreliable partial results.
