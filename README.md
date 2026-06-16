@@ -14,7 +14,7 @@ An AI-powered web application that verifies alcohol beverage labels against appl
    - Expected result: **FAIL** — ABV mismatch with review rationale
 4. **Single label — bad warning:** Upload `samples/sample-bad-warning.png` with the same data
    - Expected result: **FAIL** — government warning heading is title case, not ALL CAPS
-5. **Batch upload:** Switch to the Batch tab, upload `samples/sample-batch.csv` + all three SVG files
+5. **Batch upload:** Switch to the Batch tab, upload `samples/sample-batch.csv` + all three PNG files
    - Expected result: 1 pass, 2 fails in the summary dashboard
 
 Sample files are in the `/samples` directory. You can regenerate them with `node samples/generate-labels.js`.
