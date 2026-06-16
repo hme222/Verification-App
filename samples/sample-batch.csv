@@ -1,0 +1,4 @@
+filename,brand_name,class_type,abv,net_contents
+sample-pass.svg,Mountain Creek,American Single Malt Whiskey,45,750 mL
+sample-wrong-abv.svg,Mountain Creek,American Single Malt Whiskey,40,750 mL
+sample-bad-warning.svg,Mountain Creek,American Single Malt Whiskey,45,750 mL

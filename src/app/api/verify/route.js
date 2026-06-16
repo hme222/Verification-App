@@ -70,6 +70,10 @@ export async function POST(request) {
             headingBold: false,
           },
         },
+        labelInfo: {
+          producer: "Unreadable",
+          countryOfOrigin: "Unreadable",
+        },
       });
     }
 
@@ -110,6 +114,10 @@ export async function POST(request) {
           headingAllCaps: ocr.government_warning?.heading_all_caps ?? false,
           headingBold: ocr.government_warning?.heading_appears_bold ?? false,
         },
+      },
+      labelInfo: {
+        producer: ocr.producer || "Not detected",
+        countryOfOrigin: ocr.country_of_origin || "Not stated",
       },
     });
   } catch (error) {

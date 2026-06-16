@@ -6,7 +6,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      {/* Skip nav for accessibility */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 bg-blue-800 text-white px-4 py-2 rounded font-semibold"
@@ -14,7 +13,6 @@ export default function Home() {
         Skip to main content
       </a>
 
-      {/* Government-style header bar */}
       <header className="bg-[#1a2e5a] text-white">
         <div className="max-w-5xl mx-auto px-6 py-5">
           <p className="text-xs tracking-wider uppercase text-blue-200 mb-1">
@@ -26,7 +24,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Mode tabs */}
       <nav className="bg-slate-100 border-b border-slate-300" aria-label="Verification mode">
         <div className="max-w-5xl mx-auto px-6 flex gap-0" role="tablist">
           <button
@@ -72,11 +69,65 @@ export default function Home() {
       <footer className="border-t border-slate-200 mt-12">
         <div className="max-w-5xl mx-auto px-6 py-4 text-xs text-slate-500">
           Prototype for evaluation purposes. Label analysis powered by AI
-          vision — results should be reviewed by a compliance agent.
+          vision — results should be reviewed by a compliance agent before final determination.
         </div>
       </footer>
     </div>
   );
+}
+
+/* ─── Verdict: pass / fail / needs-review ──────────────────────── */
+function getVerdict(results) {
+  if (results.unreadable) return "needs-review";
+  const confidence = (results.imageQuality?.confidence || "low").toLowerCase();
+  const fields = Object.values(results.verificationMatrix);
+  const allPass = fields.every((f) => f.status === "pass");
+  if (confidence === "low" || confidence === "medium") return "needs-review";
+  if (allPass) return "pass";
+  return "fail";
+}
+
+const VERDICT_CONFIG = {
+  pass: {
+    bg: "bg-green-50 border-green-300",
+    badge: "bg-green-700 text-white",
+    label: "PASS",
+    title: "All Checks Passed",
+    action: "No issues detected. Proceed with approval workflow.",
+  },
+  fail: {
+    bg: "bg-red-50 border-red-300",
+    badge: "bg-red-700 text-white",
+    label: "FAIL",
+    title: "Issues Found",
+    action: "One or more fields did not match. Review details below, then reject or request corrected application data.",
+  },
+  "needs-review": {
+    bg: "bg-amber-50 border-amber-300",
+    badge: "bg-amber-600 text-white",
+    label: "REVIEW",
+    title: "Needs Agent Review",
+    action: "Image confidence is low or the image could not be fully read. Manually verify the label before making a determination.",
+  },
+};
+
+/* ─── Review Rationale for a single field ──────────────────────── */
+function getFieldRationale(key, field) {
+  if (field.status === "pass") return null;
+  const expected = field.expected;
+  const observed = field.observed;
+  switch (key) {
+    case "brandName":
+      return `Brand mismatch: application says "${expected}", label reads "${observed}". Suggested action: confirm whether this is a formatting difference or a genuine error.`;
+    case "classType":
+      return `Class/type mismatch: application says "${expected}", label reads "${observed}". Suggested action: reject or request corrected application.`;
+    case "abv":
+      return `ABV mismatch: application says ${expected}%, label reads ${observed}. Suggested action: reject or request corrected application data.`;
+    case "netContents":
+      return `Net contents mismatch: application says "${expected}", label reads "${observed}". Suggested action: reject or request corrected application.`;
+    default:
+      return null;
+  }
 }
 
 /* ─── Badge Component ──────────────────────────────────────────── */
@@ -101,7 +152,7 @@ function Badge({ status }) {
 function ImageQualityBanner({ quality, unreadable }) {
   if (unreadable) {
     return (
-      <div className="bg-red-50 border border-red-300 rounded-lg p-4 mb-6">
+      <div className="bg-red-50 border border-red-300 rounded-lg p-4 mb-6" role="alert">
         <h3 className="font-bold text-red-900 text-sm">Image could not be read</h3>
         <p className="text-red-800 text-sm mt-1">
           The uploaded image was too blurry, dark, or obstructed for analysis.
@@ -115,24 +166,18 @@ function ImageQualityBanner({ quality, unreadable }) {
       </div>
     );
   }
-
   if (!quality) return null;
-
   const conf = (quality.confidence || "unknown").toLowerCase();
   const hasIssues = quality.issues && quality.issues.length > 0;
-
   if (conf === "high" && !hasIssues) return null;
-
-  const bgColor = conf === "low" ? "bg-amber-50 border-amber-300" : "bg-blue-50 border-blue-200";
-  const textColor = conf === "low" ? "text-amber-900" : "text-blue-900";
-
+  const isLow = conf === "low" || conf === "medium";
   return (
-    <div className={`${bgColor} border rounded-lg p-3 mb-6`}>
-      <p className={`text-sm font-semibold ${textColor}`}>
+    <div className={`${isLow ? "bg-amber-50 border-amber-300" : "bg-blue-50 border-blue-200"} border rounded-lg p-3 mb-6`}>
+      <p className={`text-sm font-semibold ${isLow ? "text-amber-900" : "text-blue-900"}`}>
         Image confidence: {conf.toUpperCase()}
       </p>
       {hasIssues && (
-        <p className={`text-xs ${textColor} mt-1 opacity-80`}>
+        <p className={`text-xs ${isLow ? "text-amber-800" : "text-blue-800"} mt-1`}>
           Notes: {quality.issues.join(", ")}. Results may be less accurate.
         </p>
       )}
@@ -167,16 +212,10 @@ function SingleMode() {
     formData.append("image", image);
 
     try {
-      const response = await fetch("/api/verify", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch("/api/verify", { method: "POST", body: formData });
       const data = await response.json();
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setResults(data);
-      }
+      if (data.error) setError(data.error);
+      else setResults(data);
     } catch {
       setError("Could not reach the verification server. Please check your connection and try again.");
     } finally {
@@ -184,88 +223,41 @@ function SingleMode() {
     }
   };
 
-  const allPass =
-    results &&
-    !results.unreadable &&
-    Object.values(results.verificationMatrix).every((item) => item.status === "pass");
+  const verdict = results ? getVerdict(results) : null;
+  const vc = verdict ? VERDICT_CONFIG[verdict] : null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      {/* Left: Form (2 of 5 cols) */}
+      {/* Form */}
       <section className="lg:col-span-2" aria-label="Application data form">
-        <form
-          onSubmit={handleSubmit}
-          className="bg-slate-50 rounded-lg border border-slate-200 p-6 space-y-5"
-        >
-          <h2 className="text-lg font-bold text-slate-800">
-            Application Data
-          </h2>
+        <form onSubmit={handleSubmit} className="bg-slate-50 rounded-lg border border-slate-200 p-6 space-y-5">
+          <h2 className="text-lg font-bold text-slate-800">Application Data</h2>
           <p className="text-sm text-slate-600 -mt-3">
             Enter the values from the COLA application, then upload the label image.
           </p>
-
-          <FormField
-            id="brandName"
-            label="Brand Name"
-            value={brandName}
-            onChange={setBrandName}
-            placeholder="e.g., Stone's Throw"
-          />
-          <FormField
-            id="classType"
-            label="Class / Type"
-            value={classType}
-            onChange={setClassType}
-            placeholder="e.g., Kentucky Straight Bourbon Whiskey"
-          />
+          <FormField id="brandName" label="Brand Name" value={brandName} onChange={setBrandName} placeholder="e.g., Stone's Throw" />
+          <FormField id="classType" label="Class / Type" value={classType} onChange={setClassType} placeholder="e.g., Kentucky Straight Bourbon Whiskey" />
           <div className="grid grid-cols-2 gap-4">
-            <FormField
-              id="abv"
-              label="ABV %"
-              value={abv}
-              onChange={setAbv}
-              placeholder="e.g., 45"
-            />
-            <FormField
-              id="netContents"
-              label="Net Contents"
-              value={netContents}
-              onChange={setNetContents}
-              placeholder="e.g., 750 mL"
-            />
+            <FormField id="abv" label="ABV %" value={abv} onChange={setAbv} placeholder="e.g., 45" />
+            <FormField id="netContents" label="Net Contents" value={netContents} onChange={setNetContents} placeholder="e.g., 750 mL" />
           </div>
-
           <div className="pt-3 border-t border-slate-200">
-            <label
-              htmlFor="labelImage"
-              className="block font-semibold text-sm text-slate-700 mb-2"
-            >
-              Label Image
-            </label>
+            <label htmlFor="labelImage" className="block font-semibold text-sm text-slate-700 mb-2">Label Image</label>
             <input
-              id="labelImage"
-              type="file"
-              accept="image/*"
+              id="labelImage" type="file" accept="image/*"
               onChange={(e) => setImage(e.target.files[0])}
               className="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border file:border-slate-300 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 cursor-pointer"
               required
             />
-            <p className="text-xs text-slate-500 mt-1">
-              Upload a clear, well-lit photo of the full label.
-            </p>
+            <p className="text-xs text-slate-500 mt-1">Upload a clear, well-lit photo of the full label.</p>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#1a2e5a] hover:bg-[#15254a] disabled:bg-slate-400 text-white font-bold py-3 px-4 rounded-lg transition focus:ring-4 focus:ring-blue-200 focus:outline-none"
-          >
+          <button type="submit" disabled={loading} className="w-full bg-[#1a2e5a] hover:bg-[#15254a] disabled:bg-slate-400 text-white font-bold py-3 px-4 rounded-lg transition focus:ring-4 focus:ring-blue-200 focus:outline-none">
             {loading ? "Analyzing..." : "Verify Label"}
           </button>
         </form>
       </section>
 
-      {/* Right: Results (3 of 5 cols) */}
+      {/* Results */}
       <section className="lg:col-span-3" aria-label="Verification results" aria-live="polite">
         {!results && !loading && !error && (
           <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center flex flex-col justify-center items-center min-h-[300px] text-slate-400">
@@ -284,46 +276,32 @@ function SingleMode() {
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6" role="alert">
             <h3 className="text-lg font-bold text-red-900">Verification Error</h3>
             <p className="text-sm text-red-800 mt-2">{error}</p>
-            <p className="text-xs text-red-700 mt-3">
-              Try a different image or double-check the form values above.
-            </p>
+            <p className="text-xs text-red-700 mt-3">Try a different image or double-check the form values above.</p>
           </div>
         )}
 
-        {results && (
+        {results && vc && (
           <div className="space-y-5">
-            {/* Image quality warnings */}
             <ImageQualityBanner quality={results.imageQuality} unreadable={results.unreadable} />
 
-            {/* Overall verdict */}
-            {!results.unreadable && (
-              <div
-                className={`p-4 rounded-lg border-2 flex items-center justify-between ${
-                  allPass
-                    ? "bg-green-50 border-green-300"
-                    : "bg-red-50 border-red-300"
-                }`}
-              >
-                <div>
-                  <h3 className="text-lg font-bold">
-                    {allPass ? "All Checks Passed" : "Issues Found"}
-                  </h3>
-                  <p className="text-xs opacity-80 mt-0.5">
-                    Confidence: {(results.imageQuality?.confidence || "unknown").toUpperCase()}
-                  </p>
-                </div>
-                <span
-                  className={`text-xl font-black px-5 py-2 rounded ${
-                    allPass ? "bg-green-700 text-white" : "bg-red-700 text-white"
-                  }`}
-                >
-                  {allPass ? "PASS" : "FAIL"}
-                </span>
+            {/* Verdict banner */}
+            <div className={`p-4 rounded-lg border-2 flex items-center justify-between ${vc.bg}`}>
+              <div>
+                <h3 className="text-lg font-bold">{vc.title}</h3>
+                <p className="text-xs mt-0.5 opacity-80">
+                  Confidence: {(results.imageQuality?.confidence || "unknown").toUpperCase()}
+                </p>
               </div>
-            )}
+              <span className={`text-xl font-black px-5 py-2 rounded ${vc.badge}`}>{vc.label}</span>
+            </div>
+
+            {/* Suggested action */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-700">
+              <span className="font-bold">Suggested action: </span>{vc.action}
+            </div>
 
             {/* Field comparison table */}
             <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
@@ -342,19 +320,25 @@ function SingleMode() {
                     ["Class / Type", "classType"],
                     ["ABV", "abv"],
                     ["Net Contents", "netContents"],
-                  ].map(([label, key]) => (
-                    <tr key={key}>
-                      <td className="p-3 font-semibold text-slate-700">{label}</td>
-                      <td className="p-3 text-slate-600">
-                        {results.verificationMatrix[key].expected}
-                        {key === "abv" ? "%" : ""}
-                      </td>
-                      <td className="p-3 text-slate-900">{results.verificationMatrix[key].observed}</td>
-                      <td className="p-3 text-right">
-                        <Badge status={results.verificationMatrix[key].status} />
-                      </td>
-                    </tr>
-                  ))}
+                  ].map(([label, key]) => {
+                    const field = results.verificationMatrix[key];
+                    const rationale = getFieldRationale(key, field);
+                    return (
+                      <tr key={key} className={field.status === "fail" ? "bg-red-50/40" : ""}>
+                        <td className="p-3 font-semibold text-slate-700">
+                          {label}
+                          {rationale && (
+                            <p className="font-normal text-xs text-red-700 mt-1">{rationale}</p>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-600">
+                          {field.expected}{key === "abv" ? "%" : ""}
+                        </td>
+                        <td className="p-3 text-slate-900">{field.observed}</td>
+                        <td className="p-3 text-right"><Badge status={field.status} /></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -362,33 +346,47 @@ function SingleMode() {
             {/* Government warning */}
             <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-bold text-sm text-slate-700">
-                  Government Warning (27 CFR Part 16)
-                </h4>
+                <h4 className="font-bold text-sm text-slate-700">Government Warning (27 CFR Part 16)</h4>
                 <Badge status={results.verificationMatrix.governmentWarning.status} />
               </div>
-
               {results.verificationMatrix.governmentWarning.status === "fail" ? (
                 <div className="p-3 bg-red-50 text-red-900 text-sm rounded border border-red-200">
                   {results.verificationMatrix.governmentWarning.notes}
+                  <p className="text-xs mt-2 text-red-700">
+                    Suggested action: reject application. The government warning must match the required wording exactly, in all caps with bold heading.
+                  </p>
                 </div>
               ) : (
                 <p className="text-sm text-green-800 bg-green-50 p-3 rounded border border-green-100">
                   Warning text, capitalization, and formatting all meet regulatory requirements.
                 </p>
               )}
-
               {results.verificationMatrix.governmentWarning.observedText && (
                 <details className="text-sm text-slate-600">
-                  <summary className="cursor-pointer font-semibold text-slate-700 text-xs">
-                    View extracted warning text
-                  </summary>
+                  <summary className="cursor-pointer font-semibold text-slate-700 text-xs">View extracted warning text</summary>
                   <p className="mt-2 p-3 bg-slate-50 rounded border border-slate-200 text-xs whitespace-pre-wrap leading-relaxed">
                     {results.verificationMatrix.governmentWarning.observedText}
                   </p>
                 </details>
               )}
             </div>
+
+            {/* Producer / Country of Origin (informational) */}
+            {results.labelInfo && (
+              <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
+                <h4 className="font-bold text-sm text-slate-700">Additional Label Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="font-semibold text-slate-500 text-xs">Producer / Bottler</span>
+                    <p className="text-slate-900">{results.labelInfo.producer}</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-500 text-xs">Country of Origin</span>
+                    <p className="text-slate-900">{results.labelInfo.countryOfOrigin}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -420,16 +418,10 @@ function BatchMode() {
     }
 
     try {
-      const response = await fetch("/api/verify/batch", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch("/api/verify/batch", { method: "POST", body: formData });
       const data = await response.json();
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setResults(data);
-      }
+      if (data.error) setError(data.error);
+      else setResults(data);
     } catch {
       setError("Could not reach the verification server. Please check your connection.");
     } finally {
@@ -439,65 +431,30 @@ function BatchMode() {
 
   return (
     <div className="space-y-8">
-      {/* Upload form */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-slate-50 rounded-lg border border-slate-200 p-6 max-w-2xl"
-      >
-        <h2 className="text-lg font-bold text-slate-800 mb-1">
-          Batch Verification
-        </h2>
+      <form onSubmit={handleSubmit} className="bg-slate-50 rounded-lg border border-slate-200 p-6 max-w-2xl">
+        <h2 className="text-lg font-bold text-slate-800 mb-1">Batch Verification</h2>
         <p className="text-sm text-slate-600 mb-5">
-          Upload a CSV with application data and the corresponding label images.
-          The CSV filename column must match the uploaded image filenames.
+          Upload a CSV with application data and the corresponding label images. The CSV filename column must match the uploaded image filenames.
         </p>
-
         <div className="space-y-5">
           <div>
-            <label htmlFor="csvFile" className="block font-semibold text-sm text-slate-700 mb-2">
-              Application Data (CSV)
-            </label>
-            <input
-              id="csvFile"
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => setCsvFile(e.target.files[0])}
-              className="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border file:border-slate-300 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 cursor-pointer"
-              required
-            />
+            <label htmlFor="csvFile" className="block font-semibold text-sm text-slate-700 mb-2">Application Data (CSV)</label>
+            <input id="csvFile" type="file" accept=".csv,text/csv" onChange={(e) => setCsvFile(e.target.files[0])}
+              className="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border file:border-slate-300 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 cursor-pointer" required />
             <p className="text-xs text-slate-500 mt-1">
               Required columns: <code className="bg-slate-200 px-1 rounded">filename</code>, <code className="bg-slate-200 px-1 rounded">brand_name</code>, <code className="bg-slate-200 px-1 rounded">class_type</code>, <code className="bg-slate-200 px-1 rounded">abv</code>, <code className="bg-slate-200 px-1 rounded">net_contents</code>
             </p>
           </div>
-
           <div>
-            <label htmlFor="batchImages" className="block font-semibold text-sm text-slate-700 mb-2">
-              Label Images
-            </label>
-            <input
-              id="batchImages"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => setImageFiles(Array.from(e.target.files))}
-              className="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border file:border-slate-300 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 cursor-pointer"
-              required
-            />
+            <label htmlFor="batchImages" className="block font-semibold text-sm text-slate-700 mb-2">Label Images</label>
+            <input id="batchImages" type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files))}
+              className="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border file:border-slate-300 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 cursor-pointer" required />
             <p className="text-xs text-slate-500 mt-1">
               Select all label images. Filenames must match the CSV.
-              {imageFiles.length > 0 && (
-                <span className="font-semibold text-slate-700">
-                  {" "}{imageFiles.length} file{imageFiles.length !== 1 ? "s" : ""} selected.
-                </span>
-              )}
+              {imageFiles.length > 0 && <span className="font-semibold text-slate-700"> {imageFiles.length} file{imageFiles.length !== 1 ? "s" : ""} selected.</span>}
             </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-[#1a2e5a] hover:bg-[#15254a] disabled:bg-slate-400 text-white font-bold py-3 px-6 rounded-lg transition focus:ring-4 focus:ring-blue-200 focus:outline-none"
-          >
+          <button type="submit" disabled={loading} className="bg-[#1a2e5a] hover:bg-[#15254a] disabled:bg-slate-400 text-white font-bold py-3 px-6 rounded-lg transition focus:ring-4 focus:ring-blue-200 focus:outline-none">
             {loading ? "Processing labels..." : "Verify All Labels"}
           </button>
         </div>
@@ -507,14 +464,12 @@ function BatchMode() {
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center space-y-3">
           <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-blue-700 mx-auto"></div>
           <p className="font-semibold text-slate-700">Processing batch...</p>
-          <p className="text-sm text-slate-500">
-            Each label takes ~3–8 seconds. Larger batches may take a few minutes.
-          </p>
+          <p className="text-sm text-slate-500">Each label takes ~3–8 seconds. Larger batches may take a few minutes.</p>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl" role="alert">
           <h3 className="font-bold text-red-900">Batch Error</h3>
           <p className="text-sm text-red-800 mt-1">{error}</p>
         </div>
@@ -522,22 +477,17 @@ function BatchMode() {
 
       {results && (
         <div className="space-y-6">
-          {/* Summary bar */}
           <div className="grid grid-cols-4 gap-4">
             <SummaryCard label="Total" value={results.summary.total} color="slate" />
             <SummaryCard label="Passed" value={results.summary.passed} color="green" />
             <SummaryCard label="Failed" value={results.summary.failed} color="red" />
             <SummaryCard label="Errors" value={results.summary.errors} color="amber" />
           </div>
-
           {results.unmatchedFiles?.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-              <span className="font-bold">Unmatched CSV rows:</span>{" "}
-              {results.unmatchedFiles.join(", ")} — no image file found for these filenames.
+              <span className="font-bold">Unmatched CSV rows:</span> {results.unmatchedFiles.join(", ")} — no image file found for these filenames.
             </div>
           )}
-
-          {/* Results table */}
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <table className="w-full text-left text-sm">
               <thead>
@@ -553,12 +503,7 @@ function BatchMode() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {results.results.map((r, i) => (
-                  <BatchRow
-                    key={i}
-                    result={r}
-                    expanded={expandedRow === i}
-                    onToggle={() => setExpandedRow(expandedRow === i ? null : i)}
-                  />
+                  <BatchRow key={i} result={r} expanded={expandedRow === i} onToggle={() => setExpandedRow(expandedRow === i ? null : i)} />
                 ))}
               </tbody>
             </table>
@@ -569,7 +514,7 @@ function BatchMode() {
   );
 }
 
-/* ─── Batch Summary Card ───────────────────────────────────────── */
+/* ─── Helpers ──────────────────────────────────────────────────── */
 function SummaryCard({ label, value, color }) {
   const colors = {
     slate: "bg-slate-50 border-slate-200 text-slate-900",
@@ -585,7 +530,6 @@ function SummaryCard({ label, value, color }) {
   );
 }
 
-/* ─── Batch Row ────────────────────────────────────────────────── */
 function BatchRow({ result, expanded, onToggle }) {
   if (result.status === "error") {
     return (
@@ -593,22 +537,15 @@ function BatchRow({ result, expanded, onToggle }) {
         <td className="p-3 font-medium">{result.filename}</td>
         <td colSpan={5} className="p-3 text-amber-800 text-xs">{result.error}</td>
         <td className="p-3 text-right">
-          <span className="bg-amber-100 text-amber-900 font-bold px-2.5 py-1 rounded text-xs border border-amber-300">
-            Error
-          </span>
+          <span className="bg-amber-100 text-amber-900 font-bold px-2.5 py-1 rounded text-xs border border-amber-300">Error</span>
         </td>
       </tr>
     );
   }
-
   const f = result.fields;
   return (
     <>
-      <tr
-        className="cursor-pointer hover:bg-slate-50 transition-colors"
-        onClick={onToggle}
-        title="Click to expand details"
-      >
+      <tr className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={onToggle} title="Click to expand details">
         <td className="p-3 font-medium text-blue-800 underline decoration-dotted">{result.filename}</td>
         <td className="p-3"><MiniStatus status={f.brandName.status} /></td>
         <td className="p-3"><MiniStatus status={f.classType.status} /></td>
@@ -616,13 +553,9 @@ function BatchRow({ result, expanded, onToggle }) {
         <td className="p-3"><MiniStatus status={f.netContents.status} /></td>
         <td className="p-3"><MiniStatus status={f.governmentWarning.status} /></td>
         <td className="p-3 text-right">
-          <span
-            className={`font-bold px-2.5 py-1 rounded text-xs border ${
-              result.status === "pass"
-                ? "bg-green-100 text-green-900 border-green-300"
-                : "bg-red-100 text-red-900 border-red-300"
-            }`}
-          >
+          <span className={`font-bold px-2.5 py-1 rounded text-xs border ${
+            result.status === "pass" ? "bg-green-100 text-green-900 border-green-300" : "bg-red-100 text-red-900 border-red-300"
+          }`}>
             {result.status === "pass" ? "PASS" : "FAIL"}
           </span>
         </td>
@@ -641,18 +574,12 @@ function BatchRow({ result, expanded, onToggle }) {
               <DetailPair label="Net Contents (label)" value={f.netContents.observed} />
             </div>
             {f.governmentWarning.status === "fail" && (
-              <p className="mt-3 text-xs text-red-800 bg-red-50 p-2 rounded border border-red-200">
-                {f.governmentWarning.notes}
-              </p>
+              <p className="mt-3 text-xs text-red-800 bg-red-50 p-2 rounded border border-red-200">{f.governmentWarning.notes}</p>
             )}
             {f.governmentWarning.observedText && (
               <details className="mt-2 text-xs">
-                <summary className="cursor-pointer font-semibold text-slate-700">
-                  View extracted warning text
-                </summary>
-                <p className="mt-1 p-2 bg-white rounded border border-slate-200 whitespace-pre-wrap">
-                  {f.governmentWarning.observedText}
-                </p>
+                <summary className="cursor-pointer font-semibold text-slate-700">View extracted warning text</summary>
+                <p className="mt-1 p-2 bg-white rounded border border-slate-200 whitespace-pre-wrap">{f.governmentWarning.observedText}</p>
               </details>
             )}
           </td>
@@ -662,16 +589,11 @@ function BatchRow({ result, expanded, onToggle }) {
   );
 }
 
-/* ─── Tiny helpers ─────────────────────────────────────────────── */
 function MiniStatus({ status }) {
   return status === "pass" ? (
-    <span className="text-green-700 font-bold" aria-label="Match">
-      &#10003;<span className="sr-only"> Match</span>
-    </span>
+    <span className="text-green-700 font-bold" aria-label="Match">&#10003;<span className="sr-only"> Match</span></span>
   ) : (
-    <span className="text-red-700 font-bold" aria-label="Mismatch">
-      &#10007;<span className="sr-only"> Mismatch</span>
-    </span>
+    <span className="text-red-700 font-bold" aria-label="Mismatch">&#10007;<span className="sr-only"> Mismatch</span></span>
   );
 }
 
@@ -687,15 +609,9 @@ function DetailPair({ label, value }) {
 function FormField({ id, label, value, onChange, placeholder }) {
   return (
     <div className="flex flex-col space-y-1.5">
-      <label htmlFor={id} className="font-semibold text-sm text-slate-700">
-        {label}
-      </label>
+      <label htmlFor={id} className="font-semibold text-sm text-slate-700">{label}</label>
       <input
-        id={id}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         className="border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white text-base"
         required
       />

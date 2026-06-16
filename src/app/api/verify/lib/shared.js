@@ -17,6 +17,16 @@ export function normalize(str) {
     .trim();
 }
 
+/**
+ * Minimal whitespace normalization for the government warning comparison.
+ * Preserves capitalization, punctuation, and wording — only collapses
+ * whitespace runs and trims, so the comparison is still word-for-word strict.
+ */
+export function normalizeWarningText(str) {
+  if (!str) return "";
+  return str.replace(/\s+/g, " ").trim();
+}
+
 export function extractNumeric(str) {
   if (!str) return null;
   const match = str.toString().match(/(\d+(?:\.\d+)?)/);
@@ -44,9 +54,11 @@ Extract the following information from the label and return ONLY valid JSON with
   "alcohol_content": "the alcohol content exactly as printed (e.g. 45% ALC./VOL.)",
   "alcohol_content_numeric": 45.0,
   "net_contents": "net contents exactly as printed (e.g. 750 mL)",
+  "producer": "the bottler, producer, or importer name and address as printed on the label",
+  "country_of_origin": "the country of origin if stated on the label, or null if not present",
   "government_warning": {
     "present": true,
-    "verbatim_text": "the exact government warning text as printed on the label, word for word",
+    "verbatim_text": "the EXACT government warning text as printed on the label — word for word, preserving all capitalization and punctuation",
     "heading_all_caps": true,
     "heading_appears_bold": true
   },
@@ -58,9 +70,11 @@ Extract the following information from the label and return ONLY valid JSON with
 }
 
 Rules:
-- For government_warning.verbatim_text, transcribe EXACTLY what is printed, preserving capitalization.
-- heading_all_caps: true ONLY if "GOVERNMENT WARNING" appears in ALL CAPITAL LETTERS.
+- For government_warning.verbatim_text, transcribe EXACTLY what is printed — preserve every word, capital letter, colon, parenthesis, and period. Do not paraphrase or correct.
+- heading_all_caps: true ONLY if "GOVERNMENT WARNING" appears in ALL CAPITAL LETTERS on the label.
 - heading_appears_bold: true if the heading text appears bolder/heavier than the body text. Note: bold detection from images is approximate.
+- For producer, include the full name and address as printed. If multiple (bottler, importer), include all.
+- For country_of_origin, transcribe exactly if present (e.g., "Product of Scotland"). Use null if not stated.
 - If a field is not visible or readable, use null for strings and false for booleans.
 - alcohol_content_numeric should be just the number (e.g. 45 or 12.5).
 - For image_quality.confidence use "high", "medium", or "low".
@@ -77,7 +91,7 @@ export async function analyzeImage(imageFile) {
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     response_format: { type: "json_object" },
-    max_tokens: 1500,
+    max_tokens: 2000,
     messages: [
       {
         role: "user",
@@ -121,14 +135,16 @@ export function verifyFields(brandName, classType, abv, netContents, ocr) {
       "No government health warning was detected on the label."
     );
   } else {
-    if (
-      normalize(ocr.government_warning.verbatim_text) !==
-      normalize(REQUIRED_WARNING)
-    ) {
+    // Strict wording check: only collapse whitespace, preserve everything else
+    const ocrText = normalizeWarningText(ocr.government_warning.verbatim_text);
+    const requiredText = normalizeWarningText(REQUIRED_WARNING);
+
+    if (ocrText !== requiredText) {
       warningIssues.push(
-        "Warning text does not match the required wording. Must be an exact match per 27 CFR Part 16."
+        "Warning text does not match the required wording word-for-word per 27 CFR Part 16."
       );
     }
+
     if (!ocr.government_warning.heading_all_caps) {
       warningIssues.push(
         '"GOVERNMENT WARNING:" must appear in ALL CAPITAL LETTERS.'
@@ -145,7 +161,14 @@ export function verifyFields(brandName, classType, abv, netContents, ocr) {
     }
   }
 
-  return { brandMatch, classMatch, abvMatch, netMatch, warningStatus, warningIssues };
+  return {
+    brandMatch,
+    classMatch,
+    abvMatch,
+    netMatch,
+    warningStatus,
+    warningIssues,
+  };
 }
 
 const DEFAULT_IMAGE_QUALITY = {
