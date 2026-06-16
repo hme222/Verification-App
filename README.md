@@ -111,14 +111,20 @@ The interface is designed for government compliance agents (ages 50+, varying te
 - Icons always paired with text labels — no icon-only controls
 - Skip-navigation link for keyboard users
 - `aria-live` region announces results to screen readers
-- Proper ARIA tab semantics
+- Keyboard-accessible batch rows with expand/collapse
 - Progress feedback during AI processing
 - Error states shown inline (no alert popups)
 - Review rationale for each failed field with suggested agent action
 
-### Design Philosophy
+## Why This Approach
 
-I prioritized a reliable agent-assist workflow over full automation, because TTB review still requires human judgment for nuanced cases. The "Needs Review" state acknowledges that AI confidence varies — rather than forcing a binary pass/fail, the tool flags uncertain results for manual verification, which matches how compliance agents actually work.
+I designed this as an agent-assist tool, not an auto-approval system. TTB compliance review involves regulatory judgment, image quality uncertainty, and edge cases where AI confidence matters. The app therefore separates hard failures (field mismatches) from low-confidence "Needs Review" cases, so agents can move faster on clear-cut applications without losing control of final determinations.
+
+Key design decisions:
+- **Three-state verdicts** over binary pass/fail — because "the AI isn't sure" is meaningfully different from "this is wrong," and agents need to know which is which.
+- **Review rationale with suggested actions** — agents often paste findings into another system, so each result includes what was seen, why it failed, and what to do next, with a one-click copy button.
+- **Strict government warning matching** — the 27 CFR Part 16 warning must be word-for-word exact. The app preserves capitalization and punctuation in the comparison rather than normalizing them away, because formatting violations are real compliance failures.
+- **Graceful degradation on bad images** — rather than returning unreliable results, unreadable images are flagged for manual review with specific guidance on what went wrong.
 
 ## Assumptions
 

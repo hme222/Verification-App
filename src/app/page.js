@@ -187,6 +187,28 @@ function SingleMode() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function buildSummaryText() {
+    if (!results || !verdict) return "";
+    const vm = results.verificationMatrix;
+    const lines = [
+      `Result: ${verdict.toUpperCase()}`,
+      `Brand: ${vm.brandName.status === "pass" ? "Match" : "Mismatch"} (app: ${vm.brandName.expected}, label: ${vm.brandName.observed})`,
+      `Class/Type: ${vm.classType.status === "pass" ? "Match" : "Mismatch"} (app: ${vm.classType.expected}, label: ${vm.classType.observed})`,
+      `ABV: ${vm.abv.status === "pass" ? "Match" : "Mismatch"} (app: ${vm.abv.expected}%, label: ${vm.abv.observed})`,
+      `Net Contents: ${vm.netContents.status === "pass" ? "Match" : "Mismatch"} (app: ${vm.netContents.expected}, label: ${vm.netContents.observed})`,
+      `Gov. Warning: ${vm.governmentWarning.status === "pass" ? "Match" : "Mismatch"}`,
+      `Suggested action: ${VERDICT_CONFIG[verdict].action}`,
+    ];
+    return lines.join("\n");
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(buildSummaryText());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -225,6 +247,18 @@ function SingleMode() {
           <p className="text-sm text-slate-600 -mt-3">
             Enter the values from the COLA application, then upload the label image.
           </p>
+          <details className="text-xs bg-blue-50 border border-blue-200 rounded p-2">
+            <summary className="cursor-pointer font-semibold text-blue-800">
+              Evaluating? Use sample values
+            </summary>
+            <div className="mt-1.5 space-y-0.5 text-blue-900">
+              <p>Brand: <span className="font-mono">Mountain Creek</span></p>
+              <p>Class: <span className="font-mono">American Single Malt Whiskey</span></p>
+              <p>ABV: <span className="font-mono">45</span></p>
+              <p>Net Contents: <span className="font-mono">750 mL</span></p>
+              <p className="mt-1 text-blue-700">Upload a sample image from the <code className="bg-blue-100 px-1 rounded">/samples</code> folder.</p>
+            </div>
+          </details>
           <FormField id="brandName" label="Brand Name" value={brandName} onChange={setBrandName} placeholder="e.g., Stone's Throw" />
           <FormField id="classType" label="Class / Type" value={classType} onChange={setClassType} placeholder="e.g., Kentucky Straight Bourbon Whiskey" />
           <div className="grid grid-cols-2 gap-4">
@@ -377,6 +411,14 @@ function SingleMode() {
                 </div>
               </div>
             )}
+
+            {/* Copy summary */}
+            <button
+              onClick={handleCopy}
+              className="w-full text-sm font-semibold py-2.5 px-4 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition focus:ring-2 focus:ring-blue-200 focus:outline-none"
+            >
+              {copied ? "Copied to clipboard" : "Copy result summary"}
+            </button>
           </div>
         )}
       </section>
