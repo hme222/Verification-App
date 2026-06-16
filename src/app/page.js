@@ -60,6 +60,7 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-6 py-4 text-xs text-slate-500">
           Prototype for evaluation purposes. Label analysis powered by AI
           vision — results should be reviewed by a compliance agent before final determination.
+          Uploaded label images are sent to OpenAI for text extraction.
         </div>
       </footer>
     </div>
@@ -398,7 +399,7 @@ function SingleMode() {
 
             {/* Extracted label data — inspectable OCR output */}
             <details className="bg-white rounded-lg border border-slate-200 p-4">
-              <summary className="cursor-pointer font-bold text-sm text-slate-700">Extracted Label Data (raw AI output)</summary>
+              <summary className="cursor-pointer font-bold text-sm text-slate-700">Extracted Label Data</summary>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div><span className="text-slate-500 text-xs font-semibold">Brand</span><p className="text-slate-900">{results.verificationMatrix.brandName.observed}</p></div>
                 <div><span className="text-slate-500 text-xs font-semibold">Class/Type</span><p className="text-slate-900">{results.verificationMatrix.classType.observed}</p></div>

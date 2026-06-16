@@ -165,6 +165,22 @@ export async function POST(request) {
       );
     }
 
+    // Validate each image: must be an image type and under 10 MB
+    for (const img of imageFiles) {
+      if (typeof img.type === "string" && !img.type.startsWith("image/")) {
+        return NextResponse.json(
+          { error: `File "${img.name}" is not an image. Please upload only JPEG, PNG, or WebP files.` },
+          { status: 400 }
+        );
+      }
+      if (img.size > 10 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: `File "${img.name}" exceeds the 10 MB size limit.` },
+          { status: 400 }
+        );
+      }
+    }
+
     const csvText = await csvFile.text();
     const rows = parseCSV(csvText);
 

@@ -161,6 +161,7 @@ Key design decisions:
 - **No persistent storage** — results are not saved between sessions.
 - **Speed** — single labels return in ~3–8 seconds. Batch processing adds ~3–8 seconds per label (3 processed concurrently).
 - **Producer and country of origin** — extracted and displayed but not verified against application data (form fields could be added in a future iteration).
+- **Data handling** — uploaded label images are sent to OpenAI's API for OCR extraction. In a production government deployment, a self-hosted or FedRAMP-authorized model would replace this.
 - **No FedRAMP compliance** — this is a prototype; production deployment on Azure government infrastructure would require additional certification.
 - **Image quality gating** — if the AI determines confidence is low, the result is flagged as "Needs Review" rather than making unreliable pass/fail calls.
 
