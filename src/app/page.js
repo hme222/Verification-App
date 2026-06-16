@@ -25,12 +25,9 @@ export default function Home() {
       </header>
 
       <nav className="bg-slate-100 border-b border-slate-300" aria-label="Verification mode">
-        <div className="max-w-5xl mx-auto px-6 flex gap-0" role="tablist">
+        <div className="max-w-5xl mx-auto px-6 flex gap-0">
           <button
-            id="tab-single"
-            role="tab"
-            aria-selected={mode === "single"}
-            aria-controls="panel-single"
+            aria-current={mode === "single" ? "page" : undefined}
             onClick={() => setMode("single")}
             className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors ${
               mode === "single"
@@ -41,10 +38,7 @@ export default function Home() {
             Single Label
           </button>
           <button
-            id="tab-batch"
-            role="tab"
-            aria-selected={mode === "batch"}
-            aria-controls="panel-batch"
+            aria-current={mode === "batch" ? "page" : undefined}
             onClick={() => setMode("batch")}
             className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors ${
               mode === "batch"
@@ -58,12 +52,8 @@ export default function Home() {
       </nav>
 
       <main id="main-content" className="max-w-5xl mx-auto px-6 py-8">
-        <div id="panel-single" role="tabpanel" aria-labelledby="tab-single" hidden={mode !== "single"}>
-          {mode === "single" && <SingleMode />}
-        </div>
-        <div id="panel-batch" role="tabpanel" aria-labelledby="tab-batch" hidden={mode !== "batch"}>
-          {mode === "batch" && <BatchMode />}
-        </div>
+        {mode === "single" && <SingleMode />}
+        {mode === "batch" && <BatchMode />}
       </main>
 
       <footer className="border-t border-slate-200 mt-12">
@@ -477,7 +467,7 @@ function BatchMode() {
 
       {results && (
         <div className="space-y-6">
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <SummaryCard label="Total" value={results.summary.total} color="slate" />
             <SummaryCard label="Passed" value={results.summary.passed} color="green" />
             <SummaryCard label="Failed" value={results.summary.failed} color="red" />
@@ -489,8 +479,8 @@ function BatchMode() {
               <span className="font-bold">Unmatched CSV rows:</span> {results.unmatchedFiles.join(", ")} — no image file found for these filenames.
             </div>
           )}
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <table className="w-full text-left text-sm">
+          <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[640px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-600">
                   <th className="p-3">File</th>
@@ -547,8 +537,16 @@ function BatchRow({ result, expanded, onToggle }) {
   const f = result.fields;
   return (
     <>
-      <tr className="cursor-pointer hover:bg-slate-50 transition-colors" onClick={onToggle} title="Click to expand details">
-        <td className="p-3 font-medium text-blue-800 underline decoration-dotted">{result.filename}</td>
+      <tr className="hover:bg-slate-50 transition-colors">
+        <td className="p-3">
+          <button
+            onClick={onToggle}
+            aria-expanded={expanded}
+            className="font-medium text-blue-800 underline decoration-dotted bg-transparent border-0 cursor-pointer text-left text-sm p-0"
+          >
+            {expanded ? "\u25BC" : "\u25B6"} {result.filename}
+          </button>
+        </td>
         <td className="p-3"><MiniStatus status={f.brandName.status} /></td>
         <td className="p-3"><MiniStatus status={f.classType.status} /></td>
         <td className="p-3"><MiniStatus status={f.abv.status} /></td>

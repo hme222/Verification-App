@@ -21,6 +21,20 @@ export async function POST(request) {
       );
     }
 
+    if (typeof imageFile.type === "string" && !imageFile.type.startsWith("image/")) {
+      return NextResponse.json(
+        { error: "The uploaded file is not an image. Please upload a JPEG, PNG, or WebP file." },
+        { status: 400 }
+      );
+    }
+
+    if (imageFile.size > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "The image is larger than 10 MB. Please upload a smaller file." },
+        { status: 400 }
+      );
+    }
+
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "The server is missing its OPENAI_API_KEY configuration. Please contact the administrator." },
