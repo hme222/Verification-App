@@ -273,7 +273,7 @@ function SingleMode() {
               className="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border file:border-slate-300 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 cursor-pointer"
               required
             />
-            <p className="text-xs text-slate-500 mt-1">Upload a clear, well-lit photo of the full label.</p>
+            <p className="text-xs text-slate-500 mt-1">PNG, JPEG, or WebP. Max 10 MB. Upload a clear, well-lit photo of the full label.</p>
           </div>
           <button type="submit" disabled={loading} className="w-full bg-[#1a2e5a] hover:bg-[#15254a] disabled:bg-slate-400 text-white font-bold py-3 px-4 rounded-lg transition focus:ring-4 focus:ring-blue-200 focus:outline-none">
             {loading ? "Analyzing..." : "Verify Label"}
@@ -321,6 +321,7 @@ function SingleMode() {
               </div>
               <span className={`text-xl font-black px-5 py-2 rounded ${vc.badge}`}>{vc.label}</span>
             </div>
+            <p className="text-xs text-slate-500 italic">AI-assisted result. Final determination requires agent review.</p>
 
             {/* Suggested action */}
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-700">
@@ -395,22 +396,20 @@ function SingleMode() {
               )}
             </div>
 
-            {/* Producer / Country of Origin (informational) */}
-            {results.labelInfo && (
-              <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
-                <h4 className="font-bold text-sm text-slate-700">Additional Label Information</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="font-semibold text-slate-500 text-xs">Producer / Bottler</span>
-                    <p className="text-slate-900">{results.labelInfo.producer}</p>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-slate-500 text-xs">Country of Origin</span>
-                    <p className="text-slate-900">{results.labelInfo.countryOfOrigin}</p>
-                  </div>
-                </div>
+            {/* Extracted label data — inspectable OCR output */}
+            <details className="bg-white rounded-lg border border-slate-200 p-4">
+              <summary className="cursor-pointer font-bold text-sm text-slate-700">Extracted Label Data (raw AI output)</summary>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-slate-500 text-xs font-semibold">Brand</span><p className="text-slate-900">{results.verificationMatrix.brandName.observed}</p></div>
+                <div><span className="text-slate-500 text-xs font-semibold">Class/Type</span><p className="text-slate-900">{results.verificationMatrix.classType.observed}</p></div>
+                <div><span className="text-slate-500 text-xs font-semibold">ABV</span><p className="text-slate-900">{results.verificationMatrix.abv.observed}</p></div>
+                <div><span className="text-slate-500 text-xs font-semibold">Net Contents</span><p className="text-slate-900">{results.verificationMatrix.netContents.observed}</p></div>
+                {results.labelInfo && <>
+                  <div><span className="text-slate-500 text-xs font-semibold">Producer/Bottler</span><p className="text-slate-900">{results.labelInfo.producer}</p></div>
+                  <div><span className="text-slate-500 text-xs font-semibold">Country of Origin</span><p className="text-slate-900">{results.labelInfo.countryOfOrigin}</p></div>
+                </>}
               </div>
-            )}
+            </details>
 
             {/* Copy summary */}
             <button
@@ -482,7 +481,7 @@ function BatchMode() {
             <input id="batchImages" type="file" accept="image/*" multiple onChange={(e) => setImageFiles(Array.from(e.target.files))}
               className="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border file:border-slate-300 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 cursor-pointer" required />
             <p className="text-xs text-slate-500 mt-1">
-              Select all label images. Filenames must match the CSV.
+              PNG, JPEG, or WebP. Max 10 MB each. Filenames must match the CSV.
               {imageFiles.length > 0 && <span className="font-semibold text-slate-700"> {imageFiles.length} file{imageFiles.length !== 1 ? "s" : ""} selected.</span>}
             </p>
           </div>

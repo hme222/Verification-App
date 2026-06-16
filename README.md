@@ -102,6 +102,22 @@ The `filename` column must match the uploaded image filenames exactly. The parse
 
 ### Architecture
 
+```
+Browser form (image + application data)
+        │
+        ▼
+Next.js API route (/api/verify or /api/verify/batch)
+        │
+        ▼
+OpenAI GPT-4o Vision  ──►  structured JSON (OCR fields + confidence)
+        │
+        ▼
+Deterministic rule checks (normalize, compare, flag)
+        │
+        ▼
+Compliance report (pass / fail / needs review + rationale)
+```
+
 One page with two modes (single/batch), two API routes, one shared verification module. Uploaded images are converted to base64 and sent to GPT-4o with a structured prompt requesting JSON output. The server runs deterministic comparison logic and returns a compliance report. Batch mode processes labels in parallel (3 at a time) to balance speed with API rate limits.
 
 ### UX Approach
@@ -147,3 +163,14 @@ Key design decisions:
 - **Producer and country of origin** — extracted and displayed but not verified against application data (form fields could be added in a future iteration).
 - **No FedRAMP compliance** — this is a prototype; production deployment on Azure government infrastructure would require additional certification.
 - **Image quality gating** — if the AI determines confidence is low, the result is flagged as "Needs Review" rather than making unreliable pass/fail calls.
+
+## What I Would Build Next
+
+Given more time, these are the improvements I would prioritize:
+
+1. **Queue-based batch processing** — replace synchronous batch handling with a job queue and server-sent events for real-time progress, enabling 200+ label batches without timeouts.
+2. **Persistent storage** — save verification results to a database so agents can retrieve past reports, track trends, and audit decisions over time.
+3. **Producer/bottler verification** — add application data fields for producer and country of origin so they can be verified, not just displayed.
+4. **Full CSV library** — replace the custom parser with `papaparse` to handle escaped quotes, multiline fields, and encoding edge cases.
+5. **FedRAMP-ready deployment** — move to Azure Government with managed identity for secrets, audit logging, and FIPS-compliant TLS.
+6. **Automated tests** — unit tests for normalization logic and comparison functions, integration tests against mocked OpenAI responses, and end-to-end tests for both single and batch flows.
