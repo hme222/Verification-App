@@ -2,7 +2,7 @@
 
 An AI-powered web application that verifies alcohol beverage labels against application data, automating routine compliance checks for the Alcohol and Tobacco Tax and Trade Bureau (TTB).
 
-**Deployed application:** _URL will be added after deployment_
+**Deployed application:** _(Vercel deployment in progress)_
 
 ## What It Does
 
