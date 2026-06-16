@@ -2,10 +2,14 @@
  * Generate sample label images for testing.
  * Run: node samples/generate-labels.js
  *
- * Creates three PNG files in /samples:
- *   sample-pass.png       — all fields match the CSV
- *   sample-wrong-abv.png  — ABV says 45% but CSV expects 40%
- *   sample-bad-warning.png — government warning uses title case instead of ALL CAPS
+ * Creates three SVG files in /samples which you then convert to PNG:
+ *   sips -s format png sample-pass.svg --out sample-pass.png
+ *   (repeat for each file)
+ *
+ * Labels:
+ *   sample-pass       — all fields match the CSV
+ *   sample-wrong-abv  — ABV says 45% but CSV expects 40%
+ *   sample-bad-warning — government warning uses title case instead of ALL CAPS
  */
 
 const fs = require("fs");

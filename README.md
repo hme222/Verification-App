@@ -7,12 +7,12 @@ An AI-powered web application that verifies alcohol beverage labels against appl
 ## Quick Evaluation Path
 
 1. **Open the deployed app** at the URL above
-2. **Single label — passing:** Upload `samples/sample-pass.svg` with:
+2. **Single label — passing:** Upload `samples/sample-pass.png` with:
    - Brand: `Mountain Creek` | Class: `American Single Malt Whiskey` | ABV: `45` | Net Contents: `750 mL`
    - Expected result: **PASS** — all fields match
-3. **Single label — ABV mismatch:** Upload `samples/sample-wrong-abv.svg` with the same data but enter ABV as `40`
+3. **Single label — ABV mismatch:** Upload `samples/sample-wrong-abv.png` with the same data but enter ABV as `40`
    - Expected result: **FAIL** — ABV mismatch with review rationale
-4. **Single label — bad warning:** Upload `samples/sample-bad-warning.svg` with the same data
+4. **Single label — bad warning:** Upload `samples/sample-bad-warning.png` with the same data
    - Expected result: **FAIL** — government warning heading is title case, not ALL CAPS
 5. **Batch upload:** Switch to the Batch tab, upload `samples/sample-batch.csv` + all three SVG files
    - Expected result: 1 pass, 2 fails in the summary dashboard

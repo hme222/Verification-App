@@ -477,10 +477,11 @@ function BatchMode() {
 
       {results && (
         <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <SummaryCard label="Total" value={results.summary.total} color="slate" />
             <SummaryCard label="Passed" value={results.summary.passed} color="green" />
             <SummaryCard label="Failed" value={results.summary.failed} color="red" />
+            <SummaryCard label="Review" value={results.summary.needsReview || 0} color="yellow" />
             <SummaryCard label="Errors" value={results.summary.errors} color="amber" />
           </div>
           {results.unmatchedFiles?.length > 0 && (
@@ -520,6 +521,7 @@ function SummaryCard({ label, value, color }) {
     slate: "bg-slate-50 border-slate-200 text-slate-900",
     green: "bg-green-50 border-green-200 text-green-900",
     red: "bg-red-50 border-red-200 text-red-900",
+    yellow: "bg-yellow-50 border-yellow-200 text-yellow-900",
     amber: "bg-amber-50 border-amber-200 text-amber-900",
   };
   return (
@@ -554,9 +556,11 @@ function BatchRow({ result, expanded, onToggle }) {
         <td className="p-3"><MiniStatus status={f.governmentWarning.status} /></td>
         <td className="p-3 text-right">
           <span className={`font-bold px-2.5 py-1 rounded text-xs border ${
-            result.status === "pass" ? "bg-green-100 text-green-900 border-green-300" : "bg-red-100 text-red-900 border-red-300"
+            result.status === "pass" ? "bg-green-100 text-green-900 border-green-300"
+              : result.status === "needs-review" ? "bg-yellow-100 text-yellow-900 border-yellow-300"
+              : "bg-red-100 text-red-900 border-red-300"
           }`}>
-            {result.status === "pass" ? "PASS" : "FAIL"}
+            {result.status === "pass" ? "PASS" : result.status === "needs-review" ? "REVIEW" : "FAIL"}
           </span>
         </td>
       </tr>

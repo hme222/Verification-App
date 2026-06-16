@@ -90,9 +90,13 @@ function buildResult(filename, appData, ocr) {
     netMatch === "pass" &&
     warningStatus === "pass";
 
+  const confidence = (imageQuality.confidence || "low").toLowerCase();
+  const needsReview = confidence === "low" || confidence === "medium";
+  const status = needsReview ? "needs-review" : allPass ? "pass" : "fail";
+
   return {
     filename,
-    status: allPass ? "pass" : "fail",
+    status,
     imageQuality,
     fields: {
       brandName: {
@@ -123,6 +127,10 @@ function buildResult(filename, appData, ocr) {
             : "Meets all requirements.",
         observedText: ocr.government_warning?.verbatim_text || null,
       },
+    },
+    labelInfo: {
+      producer: ocr.producer || "Not detected",
+      countryOfOrigin: ocr.country_of_origin || "Not stated",
     },
   };
 }
@@ -213,11 +221,12 @@ export async function POST(request) {
 
     const passed = results.filter((r) => r.status === "pass").length;
     const failed = results.filter((r) => r.status === "fail").length;
+    const needsReview = results.filter((r) => r.status === "needs-review").length;
     const errors = results.filter((r) => r.status === "error").length;
 
     return NextResponse.json({
       success: true,
-      summary: { total: results.length, passed, failed, errors },
+      summary: { total: results.length, passed, failed, needsReview, errors },
       results,
       unmatchedFiles: unmatched,
     });
