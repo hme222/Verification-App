@@ -82,9 +82,9 @@ function getVerdict(results) {
   const confidence = (results.imageQuality?.confidence || "low").toLowerCase();
   const fields = Object.values(results.verificationMatrix);
   const allPass = fields.every((f) => f.status === "pass");
+  if (!allPass) return "fail";
   if (confidence === "low" || confidence === "medium") return "needs-review";
-  if (allPass) return "pass";
-  return "fail";
+  return "pass";
 }
 
 const VERDICT_CONFIG = {

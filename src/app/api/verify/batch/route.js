@@ -64,7 +64,7 @@ function buildResult(filename, appData, ocr) {
   if (!imageQuality.readable) {
     return {
       filename,
-      status: "fail",
+      status: "needs-review",
       imageQuality,
       unreadable: true,
       fields: {
@@ -92,7 +92,7 @@ function buildResult(filename, appData, ocr) {
 
   const confidence = (imageQuality.confidence || "low").toLowerCase();
   const needsReview = confidence === "low" || confidence === "medium";
-  const status = needsReview ? "needs-review" : allPass ? "pass" : "fail";
+  const status = !allPass ? "fail" : needsReview ? "needs-review" : "pass";
 
   return {
     filename,
